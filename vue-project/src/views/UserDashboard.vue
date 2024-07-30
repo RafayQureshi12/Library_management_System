@@ -112,7 +112,7 @@
               <div class="book-cover">
                 <img :src="book.coverUrl" :alt="book.title" />
                 <button @click="toggleFavorite(book)" class="favorite-btn">
-                  <font-awesome-icon icon="heart" />
+                   {{ book.isFavorite ? 'Remove from Favorites' : 'Add to Favorites' }}
                 </button>
               </div>
               <h3>{{ book.title }}</h3>
@@ -131,15 +131,15 @@
 
 <script>
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, doc, getDoc, collection, query, where, getDocs, updateDoc, addDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { getFirestore, setDoc, doc, getDoc, collection, query, where, getDocs, updateDoc, addDoc, deleteDoc, runTransaction } from 'firebase/firestore';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { ref as vueRef, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { library } from '@fortawesome/fontawesome-svg-core';
-import { faSearch, faBook, faHeart, faBell, faCog, faSignOutAlt, faChartLine, faPaintBrush, faBriefcase, faDumbbell, faNewspaper, faRocket, faHourglass, faUser, faSearch as faSearchIcon } from '@fortawesome/free-solid-svg-icons';
+import { faSearch, faBook, faBell, faCog, faSignOutAlt, faChartLine, faPaintBrush, faBriefcase, faDumbbell, faNewspaper, faRocket, faHourglass, faUser, faSearch as faSearchIcon } from '@fortawesome/free-solid-svg-icons';
 
-library.add(faSearch, faBook, faHeart, faBell, faCog, faSignOutAlt, faChartLine, faPaintBrush, faBriefcase, faDumbbell, faNewspaper, faRocket, faHourglass, faUser, faSearchIcon);
+library.add(faSearch, faBook, faBell, faCog, faSignOutAlt, faChartLine, faPaintBrush, faBriefcase, faDumbbell, faNewspaper, faRocket, faHourglass, faUser, faSearchIcon);
 
 export default {
   
@@ -212,7 +212,7 @@ export default {
       }
     };
 
-      const fetchBooks = async () => {
+  const fetchBooks = async () => {
   console.log("Starting fetchBooks function");
   const booksQuery = query(collection(db, 'books'));
   console.log("Query created:", booksQuery);
@@ -258,7 +258,7 @@ export default {
 
 
       //fetch borrowed books
-      const borrowedQuery = query(collection(db, 'borrowedBooks'), where('userId', '==', user.value.uid));
+    const borrowedQuery = query(collection(db, 'borrowedBooks'), where('userId', '==', user.value.uid));
     const borrowedSnapshot = await getDocs(borrowedQuery);
     borrowedBooks.value = await Promise.all(borrowedSnapshot.docs.map(async (borrowedDoc) => {
       const bookData = borrowedDoc.data();
@@ -296,6 +296,7 @@ export default {
         pdfUrl
       };
     }));
+      if (!favoriteBooks.value) favoriteBooks.value = [];
 
           // Inside fetchBooks function
     const favoriteQuery = query(collection(db, 'favoriteBooks'), where('userId', '==', user.value.uid));
@@ -518,27 +519,40 @@ const borrowBook = async (book) => {
     }
   };
 
-    const toggleFavorite = async (bookId) => {
-      try {
-        const userRef = doc(db, 'users', user.value.uid);
-        const userDoc = await getDoc(userRef);
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          let favorites = userData.favorites || [];
-          if (favorites.includes(bookId)) {
-            favorites = favorites.filter(id => id !== bookId);
-          } else {
-            favorites.push(bookId);
-          }
-          await updateDoc(userRef, { favorites });
-          user.value.favorites = favorites; // Update local state
-        } else {
-          console.error('User document does not exist');
-        }
-      } catch (error) {
-        console.error('Error toggling favorite:', error);
-      }
-    };
+const toggleFavorite = async (book) => {
+  try {
+    const favoriteId = `${user.value.uid}_${book.id}`;
+    const favoriteRef = doc(db, 'favoriteBooks', favoriteId);
+    const favoriteDoc = await getDoc(favoriteRef);
+
+    if (favoriteDoc.exists()) {
+      // If the book is already a favorite, remove it
+      await deleteDoc(favoriteRef);
+      favoriteBooks.value = favoriteBooks.value.filter(b => b.id !== book.id);
+      console.log('Book removed from favorites');
+    } else {
+      // If the book is not a favorite, add it
+      await setDoc(favoriteRef, {
+        userId: user.value.uid,
+        bookId: book.id,
+        addedAt: new Date().toISOString()
+      });
+      favoriteBooks.value.push({ ...book, isFavorite: true });
+      console.log('Book added to favorites');
+    }
+
+    // Update the local recommendedBooks state
+    recommendedBooks.value = recommendedBooks.value.map(b => 
+      b.id === book.id ? { ...b, isFavorite: !b.isFavorite } : b
+    );
+
+  } catch (error) {
+    console.error('Error toggling favorite:', error);
+    if (error.code) console.error('Error code:', error.code);
+    if (error.message) console.error('Error message:', error.message);
+  }
+};
+
 
 
     const sortBooksByCategory = (category) => {

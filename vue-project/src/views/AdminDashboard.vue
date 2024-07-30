@@ -44,8 +44,8 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
-import { collection, addDoc, deleteDoc, doc, getDocs, getDoc } from 'firebase/firestore';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { collection, addDoc, deleteDoc, doc, getDocs, getDoc, onSnapshot  } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes } from 'firebase/storage';
 import { db, storage } from '@/firebaseConfig';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
@@ -100,17 +100,17 @@ export default {
     };
 
     const fetchLogs = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'borrowLogs'));
-        borrowLogs.value = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-      } catch (error) {
-        console.error('Error fetching borrow logs:', error);
-        alert('Failed to fetch borrow logs');
-      }
-    };
+    try {
+      const querySnapshot = await getDocs(collection(db, 'borrowLogs'));
+      borrowLogs.value = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    } catch (error) {
+      console.error('Error fetching borrow logs:', error);
+      alert('Failed to fetch borrow logs');
+    }
+  };
 
     const addBook = async (newBook) => {
       try {
@@ -162,6 +162,51 @@ export default {
         alert('Failed to remove book');
       }
     };
+
+    const returnBook = async (logId) => {
+  try {
+    await updateDoc(doc(db, 'borrowLogs', logId), {
+      status: 'returned',
+      actualReturnDate: new Date().toISOString()
+    });
+    // Also update the book's availability
+    const bookId = borrowLogs.value.find(log => log.id === logId).bookId;
+    await updateDoc(doc(db, 'books', bookId), { available: true });
+  } catch (error) {
+    console.error('Error returning book:', error);
+    alert('Failed to return book');
+  }
+};
+
+    const checkOverdueBooks = async () => {
+      const now = new Date();
+      borrowLogs.value.forEach(async (log) => {
+        if (log.status === 'active' && isBefore(parseISO(log.endDate), now)) {
+          await updateDoc(doc(db, 'borrowLogs', log.id), { status: 'overdue' });
+        }
+      });
+    };
+
+    // Call this function periodically or when the component mounts
+    onMounted(() => {
+      checkOverdueBooks();
+      // Set up an interval to check periodically (e.g., every hour)
+      const intervalId = setInterval(checkOverdueBooks, 3600000);
+      
+      // Clear the interval when the component is unmounted
+      onUnmounted(() => clearInterval(intervalId));
+    });
+
+  
+    const unsubscribe = onSnapshot(collection(db, 'borrowLogs'), (snapshot) => {
+    borrowLogs.value = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  });
+
+  // Don't forget to unsubscribe when the component is unmounted
+    onUnmounted(() => unsubscribe());
 
     onMounted(() => {
       fetchBooks();

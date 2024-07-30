@@ -17,35 +17,64 @@
 </template>
 
 <script>
-import { format, isToday, isBefore } from 'date-fns';
+import { format, isToday, isBefore, parseISO  } from 'date-fns';
 
 export default {
   name: 'BorrowLogs',
   props: {
     logs: {
       type: Array,
-      required: true
+      required: true,
+      default: () => []
+
     }
   },
   methods: {
     formatDate(dateString) {
-      try {
-        return format(new Date(dateString), 'MMMM dd, yyyy');
-      } catch (error) {
-        return 'Invalid Date';
-      }
-    },
-    getStatus(log) {
-      const now = new Date();
-      const endDate = new Date(log.endDate);
-      if (isBefore(endDate, now) && !isToday(endDate)) {
-        return 'Overdue';
-      } else if (isToday(endDate)) {
-        return 'Due Today';
-      } else {
-        return 'Active';
-      }
-    },
+    try {
+      return format(parseISO(dateString), 'MMMM dd, yyyy');
+    } catch (error) {
+      console.error('Error parsing date:', error);
+      return 'Invalid Date';
+    }
+  },
+
+// In your methods:
+getStatus(log) {
+  if (!log.endDate) {
+    console.error('End date is missing for log:', log);
+    return 'Unknown';
+  }
+  
+  let endDate;
+  try {
+    endDate = parseISO(log.endDate);
+  } catch (error) {
+    console.error('Error parsing end date:', error);
+    return 'Invalid Date';
+  }
+
+  const now = new Date();
+  
+  if (isBefore(endDate, now) && !isToday(endDate)) {
+    return 'Overdue';
+  } else if (isToday(endDate)) {
+    return 'Due Today';
+  } else {
+    return 'Active';
+  }
+},
+
+formatDate(dateString) {
+  if (!dateString) return 'N/A';
+  try {
+    return format(parseISO(dateString), 'MMMM dd, yyyy');
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid Date';
+  }
+},
+  
     getStatusClass(log) {
       const status = this.getStatus(log);
       return {

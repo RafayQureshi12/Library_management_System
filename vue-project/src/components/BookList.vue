@@ -18,6 +18,7 @@
 </template>
 
 <script>
+
 export default {
   name: 'BookList',
   props: {
@@ -27,6 +28,8 @@ export default {
     }
   },
   emits: ['remove-book']
+
+  
 };
 </script>
 
