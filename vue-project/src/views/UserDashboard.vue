@@ -61,15 +61,16 @@
             <div v-for="book in filteredBooks" :key="book.id" class="book">
               <div class="book-cover">
                 <img :src="book.coverUrl" :alt="book.title" />
-                <button @click="toggleFavorite(book)" class="favorite-btn">
-                  <font-awesome-icon :icon="book.isFavorite ? 'heart' : ['far', 'heart']" />
-                </button>
+               
               </div>
               <h3>{{ book.title }}</h3>
               <p>{{ book.author }}</p>
               <div class="book-actions">
-                <button @click="borrowBook(book)" class="borrow-btn" v-if="book.available">Borrow</button>
-                <p v-else>Not Available</p>
+                <button v-if="book.available" @click="borrowBook(book)" class="borrow-btn">Borrow</button>
+                <button v-else class="borrow-btn" disabled>Not Available</button>
+                <button @click="toggleFavorite(book)" class="favorite-btn">
+                  {{ book.isFavorite ? 'Remove from Favorites' : 'Add to Favorites' }}
+                </button>
               </div>
             </div>
           </div>
@@ -77,16 +78,15 @@
       </div>
 
       <div v-else-if="$route.name === 'Library'">
+        <div v-if="loading">Loading borrowed books...</div>
+        <div v-else-if="error">Error: {{ error }}</div>
         <div class="my-library-container">
           <h2>My Library</h2>
           <div class="borrowed-books">
             <div v-for="book in borrowedBooks" :key="book.id" class="book-card">
               <div class="book-cover">
               <img :src="book.coverUrl" :alt="book.title" />
-              <button @click="toggleFavorite(book)" class="favorite-btn">
-                  <font-awesome-icon :icon="book.isFavorite ? 'heart' : ['far', 'heart']" />
-                </button>
-              </div>
+            </div>
               <h3>{{ book.title }}</h3>
               <p>{{ book.author }}</p>
               <p>Borrowed on: {{ formatDate(book.borrowDate) }}</p>
@@ -103,6 +103,8 @@
       </div>
 
       <div v-else-if="$route.name === 'Favorite'">
+        <div v-if="loading">Loading favorite books...</div>
+        <div v-else-if="error">Error: {{ error }}</div>
         <div class="favorites-container">
           <h2>My Favorites</h2>
           <div class="favorite-books">
@@ -190,6 +192,8 @@ export default {
           user.value = userData;
           fetchUserData();
           fetchBooks();
+          console.log('Fetching books...');
+
         } else {
           router.push({ name: 'Login' });
         }
@@ -198,7 +202,8 @@ export default {
 
     const fetchUserData = async () => {
       if (user.value) {
-        const userDoc = await getDoc(doc(db, 'users', user.value.uid));
+        const userDocRef = doc(db, 'users', user.value.uid);
+        const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const userData = userDoc.data();
           user.value = { ...user.value, ...userData };
@@ -207,121 +212,128 @@ export default {
       }
     };
 
-    const fetchBooks = async () => {
-    const booksQuery = query(collection(db, 'books'));
-    const querySnapshot = await getDocs(booksQuery);
+      const fetchBooks = async () => {
+  console.log("Starting fetchBooks function");
+  const booksQuery = query(collection(db, 'books'));
+  console.log("Query created:", booksQuery);
+  const querySnapshot = await getDocs(booksQuery);
+  console.log("QuerySnapshot received:", querySnapshot);
+
+  recommendedBooks.value = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
+    console.log("Processing document:", docSnapshot.id);
+    const bookData = docSnapshot.data();
+    console.log("Book data:", bookData);
+
+    let coverUrl = '';
+    let pdfUrl = '';
     
-    recommendedBooks.value = await Promise.all(querySnapshot.docs.map(async (doc) => {
-      const bookData = doc.data();
-      let coverUrl = '';
-      let pdfUrl = '';
-      
-      if (bookData.coverPath) {
-        try {
-          const coverRef = ref(storage, bookData.coverPath);
-          coverUrl = await getDownloadURL(coverRef);
-        } catch (error) {
-          console.error('Error fetching cover image:', error);
-        }
+    if (bookData.coverPath) {
+      try {
+        const coverRef = ref(storage, bookData.coverPath);
+        coverUrl = await getDownloadURL(coverRef);
+      } catch (error) {
+        console.error('Error fetching cover image:', error);
       }
-      
-      if (bookData.pdfPath) {
+    }
+    
+    if (bookData.pdfPath) {
       try {
         const pdfRef = ref(storage, bookData.pdfPath);
         pdfUrl = await getDownloadURL(pdfRef);
       } catch (error) {
         console.error('Error fetching PDF:', error);
-        // Set a default value or error message
         pdfUrl = 'PDF not available';
       }
     }
-      return {
-        id: doc.id,
-        ...bookData,
-        coverUrl,
-        pdfUrl
-      };
-    }));
 
-
-  //fetch borrowed books
-  const borrowedQuery = query(collection(db, 'borrowedBooks'), where('userId', '==', user.value.uid));
-  const borrowedSnapshot = await getDocs(borrowedQuery);
-  borrowedBooks.value = await Promise.all(borrowedSnapshot.docs.map(async (borrowedDoc) => {
-    const bookData = borrowedDoc.data();
-    let coverUrl = '';
-    let pdfUrl = '';
-    
-    // Fetch the book details from the 'books' collection
-    const bookRef = doc(db, 'books', bookData.bookId);
-    const bookSnapshot = await getDoc(bookRef);
-    const bookDetails = bookSnapshot.exists() ? bookSnapshot.data() : {};
-    
-    if (bookDetails.coverPath) {
-      try {
-        const coverRef = ref(storage, bookDetails.coverPath);
-        coverUrl = await getDownloadURL(coverRef);
-      } catch (error) {
-        console.error('Error fetching cover image for borrowed book:', error);
-      }
-    }
-    
-    if (bookDetails.pdfPath) {
-      try {
-        const pdfRef = ref(storage, bookDetails.pdfPath);
-        pdfUrl = await getDownloadURL(pdfRef);
-      } catch (error) {
-        console.error('Error fetching PDF for borrowed book:', error);
-        pdfUrl = 'PDF not available';
-      }
-    }
-    
     return {
-      id: borrowedDoc.id,
+      id: docSnapshot.id,
       ...bookData,
-      ...bookDetails,
       coverUrl,
       pdfUrl
     };
   }));
 
-      // Fetch favorite books
-      const favoriteQuery = query(collection(db, 'favoriteBooks'), where('userId', '==', user.value.uid));
-      const favoriteSnapshot = await getDocs(favoriteQuery);
-      favoriteBooks.value = await Promise.all(favoriteSnapshot.docs.map(async (doc) => {
-        const bookData = doc.data();
-        const bookRef = await getDoc(doc(db, 'books', bookData.bookId));
-        const bookDetails = bookRef.data();
-        let coverUrl = '';
-        let pdfUrl = '';
-        
-        if (bookDetails.coverPath) {
-          try {
-            const coverRef = ref(storage, bookDetails.coverPath);
-            coverUrl = await getDownloadURL(coverRef);
-          } catch (error) {
-            console.error('Error fetching cover image for favorite book:', error);
-          }
+
+
+
+      //fetch borrowed books
+      const borrowedQuery = query(collection(db, 'borrowedBooks'), where('userId', '==', user.value.uid));
+    const borrowedSnapshot = await getDocs(borrowedQuery);
+    borrowedBooks.value = await Promise.all(borrowedSnapshot.docs.map(async (borrowedDoc) => {
+      const bookData = borrowedDoc.data();
+      const bookRef = doc(db, 'books', bookData.bookId);
+      const bookSnapshot = await getDoc(bookRef);
+      const bookDetails = bookSnapshot.exists() ? bookSnapshot.data() : {};
+      
+      let coverUrl = '';
+      let pdfUrl = '';
+      
+      if (bookDetails.coverPath) {
+        try {
+          const coverRef = ref(storage, bookDetails.coverPath);
+          coverUrl = await getDownloadURL(coverRef);
+        } catch (error) {
+          console.error('Error fetching cover image for borrowed book:', error);
         }
-        
-        if (bookDetails.pdfPath) {
-          try {
-            const pdfRef = ref(storage, bookDetails.pdfPath);
-            pdfUrl = await getDownloadURL(pdfRef);
-          } catch (error) {
-            console.error('Error fetching PDF:', error);
-            pdfUrl = 'PDF not available';
-          }
+      }
+      
+      if (bookDetails.pdfPath) {
+        try {
+          const pdfRef = ref(storage, bookDetails.pdfPath);
+          pdfUrl = await getDownloadURL(pdfRef);
+        } catch (error) {
+          console.error('Error fetching PDF for borrowed book:', error);
+          pdfUrl = 'PDF not available';
         }
-        
-        return {
-          id: doc.id,
-          ...bookDetails,
-          coverUrl,
-          pdfUrl,
-          isFavorite: true
-        };
-      }));
+      }
+      
+      return {
+        id: borrowedDoc.id,
+        ...bookData,
+        ...bookDetails,
+        coverUrl,
+        pdfUrl
+      };
+    }));
+
+          // Inside fetchBooks function
+    const favoriteQuery = query(collection(db, 'favoriteBooks'), where('userId', '==', user.value.uid));
+    const favoriteSnapshot = await getDocs(favoriteQuery);
+    favoriteBooks.value = await Promise.all(favoriteSnapshot.docs.map(async (doc) => {
+      const bookData = doc.data();
+      const bookRef = await getDoc(doc(db, 'books', bookData.bookId));
+      const bookDetails = bookRef.data();
+      let coverUrl = '';
+      let pdfUrl = '';
+      
+      if (bookDetails.coverPath) {
+        try {
+          const coverRef = ref(storage, bookDetails.coverPath);
+          coverUrl = await getDownloadURL(coverRef);
+        } catch (error) {
+          console.error('Error fetching cover image for favorite book:', error);
+        }
+      }
+      
+      if (bookDetails.pdfPath) {
+        try {
+          const pdfRef = ref(storage, bookDetails.pdfPath);
+          pdfUrl = await getDownloadURL(pdfRef);
+        } catch (error) {
+          console.error('Error fetching PDF:', error);
+          pdfUrl = 'PDF not available';
+        }
+      }
+      
+      return {
+        id: doc.id,
+        ...bookDetails,
+        coverUrl,
+        pdfUrl,
+        isFavorite: true
+      };
+    }));
     };
 
     const filteredBooks = computed(() => {
@@ -491,7 +503,6 @@ const borrowBook = async (book) => {
         console.log('Book borrowed successfully');
       } catch (error) {
         console.error('Error borrowing book:', error);
-        // ... (keep existing error handling)
       }
     };
 
@@ -507,27 +518,28 @@ const borrowBook = async (book) => {
     }
   };
 
-  const toggleFavorite = async (book) => {
+    const toggleFavorite = async (bookId) => {
       try {
-        book.isFavorite = !book.isFavorite;
-        if (book.isFavorite) {
-          await addDoc(collection(db, 'favoriteBooks'), {
-            bookId: book.id,
-            userId: user.value.uid
-          });
-          favoriteBooks.value.push(book);
-        } else {
-          const favoriteDoc = await getDocs(query(collection(db, 'favoriteBooks'), where('bookId', '==', book.id), where('userId', '==', user.value.uid)));
-          if (!favoriteDoc.empty) {
-            await deleteDoc(doc(db, 'favoriteBooks', favoriteDoc.docs[0].id));
+        const userRef = doc(db, 'users', user.value.uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          let favorites = userData.favorites || [];
+          if (favorites.includes(bookId)) {
+            favorites = favorites.filter(id => id !== bookId);
+          } else {
+            favorites.push(bookId);
           }
-          favoriteBooks.value = favoriteBooks.value.filter(b => b.id !== book.id);
+          await updateDoc(userRef, { favorites });
+          user.value.favorites = favorites; // Update local state
+        } else {
+          console.error('User document does not exist');
         }
-        console.log(book.isFavorite ? 'Added to favorites:' : 'Removed from favorites:', book.title);
       } catch (error) {
         console.error('Error toggling favorite:', error);
       }
     };
+
 
     const sortBooksByCategory = (category) => {
       selectedCategory.value = category;
@@ -563,13 +575,12 @@ const borrowBook = async (book) => {
 };
 </script>
 
-
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 
 .app-container {
   display: flex;
-  min-height: 100vh;
+  min-height: 150vh;
   min-width: 203vh;
   font-family: 'Poppins', sans-serif;
   background-color: whitesmoke;
@@ -772,14 +783,22 @@ nav ul li a i {
 }
 
 .favorite-btn {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background: none;
+  display: inline-block;
+  padding: 10px 15px;
+  margin-top: 10px;
+  background-color: #f39c12;
+  color: white;
   border: none;
-  font-size: 28px;
-  color: #e74c3c;
+  border-radius: 6px;
   cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-size: 14px;
+  text-align: center;
+  width: 100%;
+}
+
+.favorite-btn:hover {
+  background-color: #e67e22;
 }
 
 .book h3,

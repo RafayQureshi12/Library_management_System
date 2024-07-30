@@ -32,7 +32,7 @@
             <h2>Admin Management</h2>
             <form @submit.prevent="addAdmin">
               <div class="form-group">
-                <input v-model="newAdmin.username" placeholder="Username" required />
+                <input v-model="newAdmin.email" placeholder="Email" required />
               </div>
               <div class="form-group">
                 <input v-model="newAdmin.password" type="password" placeholder="Password" required />
@@ -66,9 +66,9 @@ import bcrypt from 'bcryptjs';
 import logo from '@/assets/logo.png';
 
 export default {
-  name: 'Settings',
+  name: 'AdminSettings',
   setup() {
-    const newAdmin = ref({ username: '', password: '' });
+    const newAdmin = ref({ email: '', password: '' });
     const currentPassword = ref('');
     const newPassword = ref('');
 
@@ -79,13 +79,19 @@ export default {
 
     const addAdmin = async () => {
       try {
+        // Check if the email ends with '@admin.com'
+        if (!newAdmin.value.email.endsWith('@admin.com')) {
+          alert('Email must end with @admin.com');
+          return;
+        }
         const hashedPassword = await hashPassword(newAdmin.value.password);
-        await addDoc(collection(db, 'admins'), {
-          username: newAdmin.value.username,
-          password: hashedPassword
+        await addDoc(collection(db, 'users'), {
+          email: newAdmin.value.email,
+          password: hashedPassword,
+          role: 'admin' // Set the role as 'admin'
         });
-        alert('Admin added: ' + newAdmin.value.username);
-        newAdmin.value = { username: '', password: '' };
+        alert('Admin added: ' + newAdmin.value.email);
+        newAdmin.value = { email: '', password: '' };
       } catch (error) {
         console.error('Error adding admin: ', error);
         alert('Failed to add admin');
@@ -94,18 +100,18 @@ export default {
 
     const changePassword = async () => {
       try {
-        // Assume currentAdminUsername is stored in your app state
-        const currentAdminUsername = 'currentAdminUsername';
-        
-        const adminQuery = query(collection(db, 'admins'), where('username', '==', currentAdminUsername));
+        // Assume currentAdminEmail is stored in your app state
+        const currentAdminEmail = 'currentAdminEmail';
+
+        const adminQuery = query(collection(db, 'users'), where('email', '==', currentAdminEmail));
         const querySnapshot = await getDocs(adminQuery);
-        
+
         if (!querySnapshot.empty) {
           const adminDoc = querySnapshot.docs[0];
           const storedHash = adminDoc.data().password;
-          
+
           const isCurrentPasswordCorrect = await bcrypt.compare(currentPassword.value, storedHash);
-          
+
           if (isCurrentPasswordCorrect) {
             const newHashedPassword = await hashPassword(newPassword.value);
             await updateDoc(adminDoc.ref, {
@@ -156,10 +162,11 @@ export default {
   width: 280px;
   background-color: #2c3e50;
   padding: 25px;
-  color: #ecf0f1;
   position: fixed;
   left: 0;
   top: 0;
+  bottom: 0; /* Ensure the sidebar covers the full height */
+  color: #ecf0f1;
   overflow-y: auto;
 }
 
