@@ -9,6 +9,6 @@
     "firebase": "^10.12.4",
     "lottie-web": "^5.12.2",
     "pdf-viewer-vue": "^0.2.7",
-    "vuex": "^4.1.0"
+    "vuex": "^4.0.2"
   }
 }

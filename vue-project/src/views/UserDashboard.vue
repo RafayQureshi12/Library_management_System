@@ -30,13 +30,13 @@
         
         <!-- Search Bar -->
         <div class="search-bar">
-          <input type="text" v-model="searchQuery" placeholder="Find the book you like..." />
+        <input type="text" v-model="searchQuery" @input="search" placeholder="Find the book you like..." />
           <button @click="search">Search</button>
         </div>
         
         <!-- User Profile -->
         <div class="user-profile">
-          <span>{{ firstName }}</span>
+          <span>{{ username }}</span>
           <font-awesome-icon icon="bell" class="icon-notification" />
         </div>
       </header>
@@ -131,7 +131,7 @@
 
 <script>
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, setDoc, doc, getDoc, collection, query, where, getDocs, updateDoc, addDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { getFirestore, setDoc, doc, getDoc, collection, query, where, getDocs, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { ref as vueRef, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
@@ -158,14 +158,15 @@ export default {
     const db = getFirestore();
     const storage = getStorage();
     const router = useRouter();
-    const firstName = vueRef('');
-
+    
+    const username = ref('');
     const user = vueRef(null);
     const recommendedBooks = vueRef([]);
     const borrowedBooks = vueRef([]);
     const favoriteBooks = ref([]);
     const searchQuery = vueRef('');
     const selectedCategory = vueRef('');
+
 
     const menuItems = [
       { label: 'Discover', icon: ['fas', 'search'], route: 'Discover' },
@@ -207,7 +208,8 @@ export default {
         if (userDoc.exists()) {
           const userData = userDoc.data();
           user.value = { ...user.value, ...userData };
-          firstName.value = userData.firstName || '';
+          username.value = userData.username || '';
+          console.log('Username fetched:', username.value); // Debug log
         }
       }
     };
@@ -253,6 +255,7 @@ export default {
       pdfUrl
     };
   }));
+
 
 
 
@@ -338,10 +341,22 @@ export default {
     };
 
     const filteredBooks = computed(() => {
-      if (!selectedCategory.value) {
+      if (!selectedCategory.value && !searchQuery.value.trim()) {
         return recommendedBooks.value;
       }
-      return recommendedBooks.value.filter(book => book.genre === selectedCategory.value);
+      let filtered = recommendedBooks.value;
+      if (selectedCategory.value) {
+        filtered = filtered.filter(book => book.genre === selectedCategory.value);
+      }
+      if (searchQuery.value.trim()) {
+        const query = searchQuery.value.toLowerCase().trim();
+        filtered = filtered.filter(book => 
+          book.title.toLowerCase().includes(query) ||
+          book.author.toLowerCase().includes(query) ||
+          book.genre.toLowerCase().includes(query)
+        );
+      }
+      return filtered;
     });
 
     const logout = async () => {
@@ -354,8 +369,19 @@ export default {
     };
 
     const search = () => {
-      // Implement search logic here
-      console.log('Searching for:', searchQuery.value);
+      if (!searchQuery.value.trim()) {
+        // If the search query is empty, show all books
+        filteredBooks.value = recommendedBooks.value;
+      } else {
+        const query = searchQuery.value.toLowerCase().trim();
+        filteredBooks.value = recommendedBooks.value.filter(book => 
+          book.title.toLowerCase().includes(query) ||
+          book.author.toLowerCase().includes(query) ||
+          book.genre.toLowerCase().includes(query)
+        );
+      }
+
+    console.log('Searching for:', searchQuery.value);
     };
 
     const renewBook = async (book) => {
@@ -565,7 +591,7 @@ const toggleFavorite = async (book) => {
 
     return {
       user,
-      firstName,
+      username,
       menuItems,
       searchQuery,
       bookCategories,
@@ -582,7 +608,9 @@ const toggleFavorite = async (book) => {
       toggleFavorite,
       sortBooksByCategory,
       formatDate,
-      openPdf
+      openPdf,
+      searchQuery,
+      search,
       
     };
   }
@@ -733,11 +761,16 @@ nav ul li a i {
 .user-profile {
   display: flex;
   align-items: center;
+  gap: 10px;
 }
 
-.user-profile .name {
-  margin-right: 15px;
-  font-size: 18px;
+.user-profile span {
+  font-weight: 500;
+}
+
+.icon-notification {
+  font-size: 1.2em;
+  color: #34495e;
 }
 
 .category {

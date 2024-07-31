@@ -206,8 +206,14 @@ export default {
 
       try {
         // Create user with Firebase Auth
+        console.log('Starting signup process');
+
         const userCredential = await createUserWithEmailAndPassword(auth, this.email, this.password);
         const user = userCredential.user;
+
+        console.log('User created:', user.uid);
+
+        
 
         // Store additional user info in Firestore
         await setDoc(doc(db, 'users', user.uid), {
@@ -248,6 +254,7 @@ export default {
   height: 100vh;
   position: relative;
   overflow: hidden;
+  flex: 1;
 }
 
 #background {
@@ -257,6 +264,7 @@ export default {
   width: 100%;
   height: 100%;
   z-index: 0;
+  flex: 1;
 }
 
 .card-container {
