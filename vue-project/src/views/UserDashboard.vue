@@ -622,7 +622,7 @@ const toggleFavorite = async (book) => {
 
 .app-container {
   display: flex;
-  min-height: 150vh;
+  min-height: 160vh;
   min-width: 203vh;
   font-family: 'Poppins', sans-serif;
   background-color: whitesmoke;

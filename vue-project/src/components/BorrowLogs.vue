@@ -1,18 +1,21 @@
 <template>
   <section class="borrow-logs">
     <h2>Borrow Logs</h2>
-    <ul>
+    <ul v-if="logs && logs.length > 0">
       <li v-for="log in logs" :key="log.id" class="log-item">
         <div class="log-info">
-          <span class="log-book">{{ log.bookTitle }}</span>
-          <span class="log-user">borrowed by {{ log.user }}</span>
-          <span class="log-date">{{ formatDate(log.startDate) }} to {{ formatDate(log.endDate) }}</span>
+          <span class="log-book">{{ log.bookTitle || 'Unknown Book' }}</span>
+          <span class="log-user">borrowed by {{ log.userName || 'N/A' }}</span>
+          <span class="log-date">
+            {{ formatDate(log.borrowDate) || 'N/A' }} to {{ formatDate(log.returnDate) || 'N/A' }}
+          </span>
         </div>
         <div class="log-status" :class="getStatusClass(log)">
           {{ getStatus(log) }}
         </div>
       </li>
     </ul>
+    <p v-else>No borrow logs available.</p>
   </section>
 </template>
 
@@ -20,7 +23,7 @@
 import { format, isToday, isBefore, parseISO  } from 'date-fns';
 
 export default {
-  name: 'BorrowLogs',
+  name: 'borrowLogs',
   props: {
     logs: {
       type: Array,
@@ -29,52 +32,58 @@ export default {
 
     }
   },
+  // In your BorrowLogs component
+mounted() {
+  console.log('Received logs:', this.logs);
+  this.logs.forEach((log, index) => {
+    console.log(`Log ${index}:`, {
+      bookTitle: log.bookTitle,
+      userName: log.userName,
+      borrowDate: log.borrowDate,
+      returnDate: log.returnDate
+    });
+  });
+},
+
+updated() {
+  console.log('Updated logs:', this.logs);
+},
+
   methods: {
     formatDate(dateString) {
-    try {
-      return format(parseISO(dateString), 'MMMM dd, yyyy');
-    } catch (error) {
-      console.error('Error parsing date:', error);
-      return 'Invalid Date';
-    }
-  },
+      if (!dateString) return 'N/A';
+      try {
+        return format(parseISO(dateString), 'MMMM dd, yyyy');
+      } catch (error) {
+        console.error('Error formatting date:', error, dateString);
+        return 'Invalid Date';
+      }
+    },
 
 // In your methods:
-getStatus(log) {
-  if (!log.endDate) {
-    console.error('End date is missing for log:', log);
-    return 'Unknown';
-  }
-  
-  let endDate;
-  try {
-    endDate = parseISO(log.endDate);
-  } catch (error) {
-    console.error('Error parsing end date:', error);
-    return 'Invalid Date';
-  }
+ getStatus(log) {
+      if (!log.returnDate) {
+        return 'Active';
+      }
+      
+      let endDate;
+      try {
+        endDate = parseISO(log.returnDate);
+      } catch (error) {
+        console.error('Error parsing return date:', error, log.returnDate);
+        return 'Invalid Date';
+      }
 
-  const now = new Date();
-  
-  if (isBefore(endDate, now) && !isToday(endDate)) {
-    return 'Overdue';
-  } else if (isToday(endDate)) {
-    return 'Due Today';
-  } else {
-    return 'Active';
-  }
-},
-
-formatDate(dateString) {
-  if (!dateString) return 'N/A';
-  try {
-    return format(parseISO(dateString), 'MMMM dd, yyyy');
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return 'Invalid Date';
-  }
-},
-  
+      const now = new Date();
+      
+      if (isBefore(endDate, now) && !isToday(endDate)) {
+        return 'Overdue';
+      } else if (isToday(endDate)) {
+        return 'Due Today';
+      } else {
+        return 'Active';
+      }
+    },
     getStatusClass(log) {
       const status = this.getStatus(log);
       return {
@@ -83,8 +92,11 @@ formatDate(dateString) {
         'status-due': status === 'Due Today'
       };
     }
-  }
-};
+  },
+  mounted() {
+    console.log('Logs data being passed to BorrowLogs:', this.logsData);  }
+}
+
 </script>
 
 <style scoped>

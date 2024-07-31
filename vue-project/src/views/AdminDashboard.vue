@@ -86,18 +86,18 @@ export default {
       });
     });
 
-    const fetchBooks = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'books'));
-        books.value = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-      } catch (error) {
-        console.error('Error fetching books:', error);
-        alert('Failed to fetch books');
-      }
-    };
+  const fetchBooks = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'books'));
+      books.value = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    } catch (error) {
+      console.error('Error fetching books:', error);
+      books.value = []; // Ensure it's an empty array if there's an error
+    }
+  };
 
     const fetchLogs = async () => {
     try {
@@ -125,6 +125,7 @@ export default {
           await uploadBytes(coverFileRef, newBook.coverFile);
         }
 
+        
         const docRef = await addDoc(collection(db, 'books'), {
           title: newBook.title,
           author: newBook.author,
@@ -142,8 +143,10 @@ export default {
           coverPath: coverPath
         };
 
-        books.value.push(newBookWithId);
-
+        if (!Array.isArray(books.value)) {
+            books.value = [];
+          }
+          books.value.push(newBookWithId);
         successMessage.value = 'Book added successfully!';
         showSuccessModal.value = true;
       } catch (error) {
@@ -197,6 +200,28 @@ export default {
       onUnmounted(() => clearInterval(intervalId));
     });
 
+
+const fetchborrowLogs = async () => {
+  try {
+    const logsSnapshot = await getDocs(collection(db, 'borrowLogs'));
+    borrowLogs.value = logsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        bookTitle: data.bookTitle || 'Unknown Book',
+        userName: data.userName || 'Unknown User',
+        borrowDate: data.borrowDate?.toDate().toISOString() || null,
+        returnDate: data.returnDate?.toDate().toISOString() || null
+      };
+    });
+    console.log('Fetched borrow logs:', borrowLogs.value);
+  } catch (error) {
+    console.error('Error fetching borrow logs:', error);
+    borrowLogs.value = []; // Ensure it's an empty array if there's an error
+  }
+};
+
+    onMounted(fetchborrowLogs);
   
     const unsubscribe = onSnapshot(collection(db, 'borrowLogs'), (snapshot) => {
     borrowLogs.value = snapshot.docs.map(doc => ({
