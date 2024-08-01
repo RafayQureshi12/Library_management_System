@@ -45,9 +45,10 @@
 
 <script>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { collection, addDoc, deleteDoc, doc, getDocs, getDoc, onSnapshot  } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, getDocs, getDoc, onSnapshot,  } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes } from 'firebase/storage';
 import { db, storage } from '@/firebaseConfig';
+import { useRouter } from 'vue-router';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import logo from '@/assets/logo.png';
 import BookForm from '@/components/BookForm.vue';
@@ -63,7 +64,8 @@ export default {
     BorrowLogs,
     SuccessModal
   },
-  setup(_, { router }) {
+  setup() {
+    const router = useRouter(); 
     const isAdmin = ref(false);
     const books = ref([]);
     const borrowLogs = ref([]);
@@ -71,19 +73,19 @@ export default {
     const successMessage = ref('');
     const auth = getAuth();
     
-    onMounted(() => {
-      onAuthStateChanged(auth, async (user) => {
-        if (user) {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          const userData = userDoc.data();
-          isAdmin.value = userData && userData.role === 'admin';
-          if (isAdmin.value) {
-            router.push({ name: 'AdminDashboard' });
-          }
-        } else {
-          isAdmin.value = false;
+  onMounted(() => {
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const userData = userDoc.data();
+        isAdmin.value = userData && userData.role === 'admin';
+        if (isAdmin.value) {
+          router.push({ name: 'AdminDashboard' });
         }
-      });
+      } else {
+        isAdmin.value = false;
+      }
+    })
     });
 
   const fetchBooks = async () => {
@@ -201,26 +203,25 @@ export default {
     });
 
 
-const fetchborrowLogs = async () => {
-  try {
-    const logsSnapshot = await getDocs(collection(db, 'borrowLogs'));
-    borrowLogs.value = logsSnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        bookTitle: data.bookTitle || 'Unknown Book',
-        userName: data.userName || 'Unknown User',
-        borrowDate: data.borrowDate?.toDate().toISOString() || null,
-        returnDate: data.returnDate?.toDate().toISOString() || null
-      };
-    });
-    console.log('Fetched borrow logs:', borrowLogs.value);
-  } catch (error) {
-    console.error('Error fetching borrow logs:', error);
-    borrowLogs.value = []; // Ensure it's an empty array if there's an error
-  }
-};
-
+    const fetchborrowLogs = async () => {
+      try {
+        const logsSnapshot = await getDocs(collection(db, 'borrowLogs'));
+        borrowLogs.value = logsSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            bookTitle: data.bookTitle || 'Unknown Book',
+            userName: data.userName || 'N/A',
+            borrowDate: data.borrowDate ? new Date(data.borrowDate.seconds * 1000).toISOString() : 'N/A',
+            returnDate: data.returnDate ? new Date(data.returnDate.seconds * 1000).toISOString() : 'N/A'
+          };
+        });
+        console.log('Fetched borrow logs:', borrowLogs.value);
+      } catch (error) {
+        console.error('Error fetching borrow logs:', error);
+        borrowLogs.value = [];
+      }
+    };
     onMounted(fetchborrowLogs);
   
     const unsubscribe = onSnapshot(collection(db, 'borrowLogs'), (snapshot) => {
