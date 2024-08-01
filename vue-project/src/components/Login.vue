@@ -111,13 +111,14 @@ import lottie from 'lottie-web';
 import adminAnimation from '@/assets/background.json';
 import userAnimation from '@/assets/mainbg.json';
 import signupAnimation from '@/assets/mainbg.json';
-import ErrorPopup from './Errorpopup.vue';
+import ErrorPopup from './ErrorPopup.vue';
 import logo from '@/assets/logo.png';
 
 export default {
   name: 'Login',
   components: {
     ErrorPopup,
+    
   },
   setup() {
     const { state, send } = useMachine(authMachine);
