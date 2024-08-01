@@ -111,7 +111,7 @@ import lottie from 'lottie-web';
 import adminAnimation from '@/assets/background.json';
 import userAnimation from '@/assets/mainbg.json';
 import signupAnimation from '@/assets/mainbg.json';
-import ErrorPopup from './ErrorPopup.vue';
+import ErrorPopup from './Errorpopup.vue';
 import logo from '@/assets/logo.png';
 
 export default {
