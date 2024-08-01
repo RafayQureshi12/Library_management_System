@@ -104,45 +104,38 @@
 </template>
 
 
+
+
 <script>
-import { useMachine } from '@xstate/vue';
-import { authMachine } from '@/machines/authMachine';
 import lottie from 'lottie-web';
 import adminAnimation from '@/assets/background.json';
 import userAnimation from '@/assets/mainbg.json';
 import signupAnimation from '@/assets/mainbg.json';
 import ErrorPopup from './Errorpopup.vue';
 import logo from '@/assets/logo.png';
+import { auth, db } from '@/firebaseConfig';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 export default {
   name: 'Login',
   components: {
     ErrorPopup,
-    
-  },
-  setup() {
-    const { state, send } = useMachine(authMachine);
-    return { state, send };
   },
   data() {
     return {
-      username: '',
+      username:'',
       email: '',
       password: '',
       confirmPassword: '',
       currentAnimation: null,
+      showError: false,
+      errorMessage: '',
       logo,
       currentView: 'user',
       capsLockOn: false,
+      validAdminEmails: ['21020@admin.com'], // Add valid admin emails here
     };
-  },
-  computed: {
-    showError() {
-      return this.state.matches('error');
-    },
-    errorMessage() {
-      return this.state.context.error?.message || '';
-    },
   },
   methods: {
     changeView(to) {
@@ -170,31 +163,80 @@ export default {
         },
       });
     },
-    login(role) {
-      this.send('LOGIN', { email: this.email, password: this.password, role });
+    async login(role) {
+      try {
+        // Sign in with Firebase Auth
+        const userCredential = await signInWithEmailAndPassword(auth, this.email, this.password);
+        const user = userCredential.user;
+
+        // Check user role in Firestore
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const userData = userDoc.data();
+
+        if (userData) {
+          if (role === 'admin') {
+            // Check if email is in the list of valid admin emails
+            if (!this.validAdminEmails.includes(this.email)) {
+              throw new Error('Invalid admin email');
+            }
+            this.$router.push({ name: 'AdminDashboard' });
+          } else if (userData.role === 'user') {
+            this.$router.push({ name: 'UserDashboard' });
+          } else {
+            throw new Error('Invalid role for this user');
+          }
+        } else {
+          throw new Error('User data not found');
+        }
+      } catch (error) {
+        this.showError = true;
+        this.errorMessage = error.message;
+        setTimeout(() => {
+          this.showError = false;
+        }, 3000);
+      }
     },
-    signup() {
+    async signup() {
       if (this.password !== this.confirmPassword) {
-        this.send({ type: 'ERROR', data: new Error('Passwords do not match') });
+        this.showError = true;
+        this.errorMessage = 'Passwords do not match';
+        setTimeout(() => {
+          this.showError = false;
+        }, 3000);
         return;
       }
-      this.send('SIGNUP', { username: this.username, email: this.email, password: this.password });
+
+      try {
+        // Create user with Firebase Auth
+        console.log('Starting signup process');
+
+        const userCredential = await createUserWithEmailAndPassword(auth, this.email, this.password);
+        const user = userCredential.user;
+
+        console.log('User created:', user.uid);
+
+        
+
+        // Store additional user info in Firestore
+        await setDoc(doc(db, 'users', user.uid), {
+          username: this.username,
+          email: this.email,
+          role: 'user', // Default role
+        });
+
+        alert('Sign-up successful!');
+        this.changeView('user');
+      } catch (error) {
+        this.showError = true;
+        this.errorMessage = error.message;
+        setTimeout(() => {
+          this.showError = false;
+        }, 3000);
+      }
     },
     checkCapsLock(event) {
       if (event.getModifierState) {
         this.capsLockOn = event.getModifierState('CapsLock');
-      }
-    },
-  },
-  watch: {
-    'state.value'(newValue) {
-      if (newValue === 'authenticated') {
-        const role = this.state.context.user.role;
-        if (role === 'admin') {
-          this.$router.push({ name: 'AdminDashboard' });
-        } else {
-          this.$router.push({ name: 'UserDashboard' });
-        }
       }
     },
   },
