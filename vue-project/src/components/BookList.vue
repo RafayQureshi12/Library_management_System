@@ -9,7 +9,7 @@
           <span class="book-genre">{{ book.genre }}</span>
         </div>
         <div class="book-actions">
-          <a :href="book.pdfUrl" target="_blank" class="btn btn-primary">View PDF</a>
+          <button @click="openPdf(book)" class="btn btn-primary">View PDF</button>
           <button @click="$emit('remove-book', book.id)" class="btn btn-danger">Remove</button>
         </div>
       </li>
@@ -18,6 +18,7 @@
 </template>
 
 <script>
+import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 
 export default {
   name: 'BookList',
@@ -27,9 +28,27 @@ export default {
       required: true
     }
   },
-  emits: ['remove-book']
-
-  
+  emits: ['remove-book'],
+  methods: {
+    async openPdf(book) {
+      console.log('Book object:', book);
+      if (book.pdfPath) {
+        try {
+          const storage = getStorage();
+          const pdfRef = ref(storage, book.pdfPath);
+          const pdfUrl = await getDownloadURL(pdfRef);
+          console.log('Opening PDF URL:', pdfUrl);
+          window.open(pdfUrl, '_blank');
+        } catch (error) {
+          console.error('Error fetching PDF:', error);
+          alert('Sorry, the PDF for this book is not available.');
+        }
+      } else {
+        console.error('PDF path not available for this book');
+        alert('Sorry, the PDF for this book is not available.');
+      }
+    }
+  }
 };
 </script>
 
@@ -103,7 +122,6 @@ ul {
 .btn-primary {
   background-color: #3498db;
   color: white;
-  text-decoration: none;
 }
 
 .btn-primary:hover {

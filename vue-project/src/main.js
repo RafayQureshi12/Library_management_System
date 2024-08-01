@@ -22,7 +22,7 @@ import {
   faFlask
 } from '@fortawesome/free-solid-svg-icons';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { app as firebaseApp } from './firebaseConfig'; // Ensure firebaseConfig is properly imported
+import { app as firebaseApp } from './firebaseConfig';
 import { initializeFirestore } from './fireStoreConfig';
 
 initializeFirestore();
@@ -32,17 +32,22 @@ library.add(faLandmark, faFlask, faChartLine, faPaintBrush, faBriefcase, faDumbb
 
 initializeApp(firebaseConfig)
 
-const app = createApp(App);
+const createMyApp = () => {
+  const app = createApp(App);
 
-// Use Vue Router
-app.use(router);
+  // Use Vue Router
+  app.use(router);
 
-// Register FontAwesome component
-app.component('font-awesome-icon', FontAwesomeIcon);
+  // Register FontAwesome component
+  app.component('font-awesome-icon', FontAwesomeIcon);
+
+  return app;
+};
 
 // Check if user is authenticated before mounting the app
 const auth = getAuth(firebaseApp);
 onAuthStateChanged(auth, user => {
+  const app = createMyApp();
   if (user) {
     app.mount('#app');
   } else {
@@ -51,3 +56,5 @@ onAuthStateChanged(auth, user => {
     app.mount('#app');
   }
 });
+
+export { createMyApp };

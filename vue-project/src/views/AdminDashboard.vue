@@ -101,18 +101,26 @@ export default {
     }
   };
 
-    const fetchLogs = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, 'borrowLogs'));
-      borrowLogs.value = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error('Error fetching borrow logs:', error);
-      alert('Failed to fetch borrow logs');
-    }
-  };
+   const fetchLogs = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'borrowedBooks'));
+    const logs = await Promise.all(querySnapshot.docs.map(async (docData) => {
+      const borrowData = docData.data();
+      // const borrowDocSnap = await getDoc(doc(db, "books", borrowData.bookId));
+      const userDocSnap = await getDoc(doc(db, "users", borrowData.userId));
+      return {
+        id: docData.id,
+        ...borrowData,
+        userName: userDocSnap.data().email
+      };
+    }));
+    borrowLogs.value = logs;
+  } catch (error) {
+    console.error('Error fetching borrow logs:', error);
+    alert('Failed to fetch borrow logs');
+  }
+};
+
 
     const addBook = async (newBook) => {
       try {

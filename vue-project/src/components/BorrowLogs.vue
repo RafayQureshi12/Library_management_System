@@ -4,7 +4,7 @@
       <ul v-if="logs && logs.length > 0">
         <li v-for="log in logs" :key="log.id" class="log-item">
           <div class="log-info">
-            <span class="log-book">{{ log.bookTitle || 'Unknown Book' }}</span>
+            <span class="log-book">{{ log.title || 'Unknown Book' }}</span>
             <span class="log-user">borrowed by {{ log.userName || 'N/A' }}</span>
             <span class="log-date">{{ formatDate(log.borrowDate) }} to {{ formatDate(log.returnDate) }}</span>
           </div>
@@ -33,7 +33,7 @@
       console.log('Received logs:', this.logs);
       this.logs.forEach((log, index) => {
         console.log(`Log ${index}:`, {
-          bookTitle: log.bookTitle,
+          title: log.title,
           userName: log.userName,
           borrowDate: log.borrowDate,
           returnDate: log.returnDate

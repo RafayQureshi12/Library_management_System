@@ -29,13 +29,13 @@
     <main class="main-content">
       <header class="header">
         <h1>{{ $route.name }}</h1>
-        
+
         <!-- Search Bar -->
         <div class="search-bar">
-        <input type="text" v-model="searchQuery" @input="search" placeholder="Find the book you like..." />
+          <input type="text" v-model="searchQuery" @input="search" placeholder="Find the book you like..." />
           <button @click="search">Search</button>
         </div>
-        
+
         <!-- User Profile -->
         <div class="user-profile">
           <span>{{ username }}</span>
@@ -49,7 +49,8 @@
         <section class="book-categories">
           <h2>Book Categories</h2>
           <div class="category-list">
-            <div v-for="category in bookCategories" :key="category.name" class="category" @click="sortBooksByCategory(category.name)">
+            <div v-for="category in bookCategories" :key="category.name" class="category"
+              @click="sortBooksByCategory(category.name)">
               <font-awesome-icon :icon="category.icon" />
               <h3>{{ category.name }}</h3>
             </div>
@@ -63,7 +64,6 @@
             <div v-for="book in filteredBooks" :key="book.id" class="book">
               <div class="book-cover">
                 <img :src="book.coverUrl" :alt="book.title" />
-               
               </div>
               <h3>{{ book.title }}</h3>
               <p>{{ book.author }}</p>
@@ -87,14 +87,13 @@
           <div class="borrowed-books">
             <div v-for="book in borrowedBooks" :key="book.id" class="book-card">
               <div class="book-cover">
-              <img :src="book.coverUrl" :alt="book.title" />
-            </div>
+                <img :src="book.coverUrl" :alt="book.title" />
+              </div>
               <h3>{{ book.title }}</h3>
               <p>{{ book.author }}</p>
               <p>Borrowed on: {{ formatDate(book.borrowDate) }}</p>
               <p>Return by: {{ formatDate(book.returnDate) }}</p>
               <div class="book-actions">
-
                 <button @click="openPdf(book)" class="read-btn">Read</button>
                 <button @click="renewBook(book)" class="renew-btn">Renew</button>
                 <button @click="returnBook(book)" class="return-btn">Return</button>
@@ -105,35 +104,36 @@
       </div>
 
       <div v-else-if="$route.name === 'Favorite'">
-      <div v-if="loading">Loading favorite books...</div>
-      <div v-else-if="error">Error: {{ error }}</div>
-      <div class="favorites-container">
-        <h2>My Favorites</h2>
-        <div class="favorite-books">
-          <div v-for="book in favoriteBooks" :key="book.id" class="book-card">
-            <div class="book-cover">
-              <img :src="book.coverUrl" :alt="book.title" />
-              <button @click="toggleFavorite(book)" class="favorite-btn">
-                Remove from Favorites
-              </button>
-            </div>
-            <h3>{{ book.title }}</h3>
-            <p>{{ book.author }}</p>
-            <div class="book-actions">
-              <button v-if="book.available" @click="borrowBook(book)" class="borrow-btn">Borrow</button>
-              <p v-else>Not Available</p>
+        <div v-if="loading">Loading favorite books...</div>
+        <div v-else-if="error">Error: {{ error }}</div>
+        <div class="favorites-container">
+          <h2>My Favorites</h2>
+          <div class="favorite-books">
+            <div v-for="book in favoriteBooks" :key="book.id" class="book-card">
+              <div class="book-cover">
+                <img :src="book.coverUrl" :alt="book.title" />
+                <button @click="toggleFavorite(book)" class="favorite-btn">
+                  Remove from Favorites
+                </button>
+              </div>
+              <h3>{{ book.title }}</h3>
+              <p>{{ book.author }}</p>
+              <div class="book-actions">
+                <button v-if="book.available" @click="borrowBook(book)" class="borrow-btn">Borrow</button>
+                <p v-else>Not Available</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
     </main>
   </div>
 </template>
 
+
 <script>
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, setDoc, doc, getDoc, collection, query, where, getDocs, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, collection, query, where, getDocs, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { ref as vueRef, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
@@ -162,11 +162,11 @@ export default {
     const storage = getStorage();
     const router = useRouter();
     
-    const username = ref('');
+    const username = vueRef('');
     const user = vueRef(null);
     const recommendedBooks = vueRef([]);
     const borrowedBooks = vueRef([]);
-    const favoriteBooks = ref([]);
+    const favoriteBooks = vueRef([]);
     const searchQuery = vueRef('');
     const selectedCategory = vueRef('');
 
@@ -305,43 +305,64 @@ export default {
       if (!favoriteBooks.value) favoriteBooks.value = [];
 
           // Inside fetchBooks function
-const favoriteQuery = query(collection(db, 'favoriteBooks'), where('userId', '==', user.value.uid));
-  const favoriteSnapshot = await getDocs(favoriteQuery);
-  favoriteBooks.value = await Promise.all(favoriteSnapshot.docs.map(async (doc) => {
-    const bookData = doc.data();
-    const bookRef = await getDoc(doc(db, 'books', bookData.bookId));
-    const bookDetails = bookRef.data();
-    let coverUrl = '';
-    let pdfUrl = '';
-    
-    if (bookDetails.coverPath) {
-      try {
-        const coverRef = ref(storage, bookDetails.coverPath);
-        coverUrl = await getDownloadURL(coverRef);
-      } catch (error) {
-        console.error('Error fetching cover image for favorite book:', error);
+    try {
+      const userId = user.value.uid
+      const userRef = doc(db, 'users', userId)
+      const userDoc = await getDoc(userRef)
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        const favoriteBookIds = userData.favoriteBooks || []
+        console.log("FAVVEE: ", favoriteBookIds)
+        favoriteBooks.value = await Promise.all(
+          favoriteBookIds.map(async (bookId) => {
+            const bookRef = await getDoc(doc(db, 'books', bookId))
+            const bookDetails = bookRef.data()
+            let coverUrl = ''
+            let pdfUrl = ''
+
+            if (bookDetails.coverPath) {
+              try {
+                const coverRef = ref(storage, bookDetails.coverPath)
+                coverUrl = await getDownloadURL(coverRef)
+              } catch (error) {
+                console.error('Error fetching cover image for favorite book:', error)
+              }
+            }
+
+            if (bookDetails.pdfPath) {
+              try {
+                const pdfRef = ref(storage, bookDetails.pdfPath)
+                pdfUrl = await getDownloadURL(pdfRef)
+              } catch (error) {
+                console.error('Error fetching PDF for favorite book:', error)
+                pdfUrl = 'PDF not available'
+              }
+            }
+            console.log("FAVE--",{
+              id: bookRef.id,
+              ...bookDetails,
+              coverUrl,
+              pdfUrl,
+              isFavorite: true
+            })
+            return {
+              id: bookRef.id,
+              ...bookDetails,
+              coverUrl,
+              pdfUrl,
+              isFavorite: true
+            }
+          })
+        )
+        console.log("FVBOOKS-- ", favoriteBooks)
+      } else {
+        console.error('User document does not exist')
       }
+    } catch (error) {
+      console.error('Error fetching favorite books:', error)
     }
-    
-    if (bookDetails.pdfPath) {
-      try {
-        const pdfRef = ref(storage, bookDetails.pdfPath);
-        pdfUrl = await getDownloadURL(pdfRef);
-      } catch (error) {
-        console.error('Error fetching PDF for favorite book:', error);
-        pdfUrl = 'PDF not available';
-      }
-    }
-    
-    return {
-      id: bookRef.id,
-      ...bookDetails,
-      coverUrl,
-      pdfUrl,
-      isFavorite: true
-    };
-  }));
-    };
+        };
 
     const filteredBooks = computed(() => {
       if (!selectedCategory.value && !searchQuery.value.trim()) {
@@ -510,13 +531,14 @@ const borrowBook = async (book) => {
       
 
       // Add a borrow log
-      const borrowLogRef = doc(collection(db, 'borrowLogs'));
-      transaction.set(borrowLogRef, {
-        userId: user.value.uid,
-        bookId: book.id,
-        action: 'borrowed',
-        timestamp: borrowDate.toISOString()
-      });
+      // const borrowLogRef = doc(collection(db, 'borrowLogs'));
+      // transaction.set(borrowLogRef, {
+      //   userName: user.value.uid,
+      //   bookId: book.id,
+      //   action: 'borrowed',
+      //   borrowDate: borrowDate,
+      //   returnDate: returnDate
+      // });
     });
  // Update the UI
         const borrowedBook = {
@@ -548,39 +570,45 @@ const borrowBook = async (book) => {
     }
   };
 
-const toggleFavorite = async (book) => {
-  try {
-    const favoriteId = `${user.value.uid}_${book.id}`;
-    const favoriteRef = doc(db, 'favoriteBooks', favoriteId);
-    const favoriteDoc = await getDoc(favoriteRef);
+    const toggleFavorite = async (book) => {
+      try {
+        const userId = user.value.uid;
+        const userRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userRef);
 
-    if (favoriteDoc.exists()) {
-      // If the book is already a favorite, remove it
-      await deleteDoc(favoriteRef);
-      favoriteBooks.value = favoriteBooks.value.filter(b => b.id !== book.id);
-      console.log('Book removed from favorites');
-    } else {
-      // If the book is not a favorite, add it
-      await setDoc(favoriteRef, {
-        userId: user.value.uid,
-        bookId: book.id,
-        addedAt: new Date().toISOString()
-      });
-      const bookDoc = await getDoc(doc(db, 'books', book.id));
-      const bookData = bookDoc.data();
-      favoriteBooks.value.push({ ...bookData, id: book.id, isFavorite: true });
-      console.log('Book added to favorites');
-    }
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          let favoriteBooks = userData.favoriteBooks || [];
 
-    // Update the local recommendedBooks state
-    recommendedBooks.value = recommendedBooks.value.map(b => 
-      b.id === book.id ? { ...b, isFavorite: !b.isFavorite } : b
-    );
+          if (favoriteBooks.includes(book.id)) {
+            // If the book is already a favorite, remove it
+            favoriteBooks = favoriteBooks.filter(b => b !== book.id);
+            console.log('Book removed from favorites');
+          } else {
+            // If the book is not a favorite, add it
+            favoriteBooks.push(book.id);
+            console.log('Book added to favorites');
+          }
 
-  } catch (error) {
-    console.error('Error toggling favorite:', error);
-  }
-};
+          // Update the user's favoriteBooks array in the database
+          await updateDoc(userRef, { favoriteBooks });
+
+          // Update the local state
+          favoriteBooks.value = favoriteBooks.map(b => b === book.id ? { ...b, isFavorite: !b.isFavorite } : b);
+
+          // Update the local recommendedBooks state
+          recommendedBooks.value = recommendedBooks.value.map(b =>
+            b.id === book.id ? { ...b, isFavorite: !b.isFavorite } : b
+          );
+
+        } else {
+          console.error('User document does not exist');
+        }
+      } catch (error) {
+        console.error('Error toggling favorite:', error);
+      }
+    };
+
 
 
 
@@ -600,7 +628,7 @@ const toggleFavorite = async (book) => {
       bookCategories,
       recommendedBooks,
       borrowedBooks,
-      favoriteBooks,
+      favoriteBooks, 
       filteredBooks,
       selectedCategory,
       logout,
