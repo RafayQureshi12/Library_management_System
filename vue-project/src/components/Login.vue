@@ -107,6 +107,8 @@
 
 
 <script>
+import { createMachine, assign } from 'xstate';
+import {machine} from '@/assets/machines/authMachine'
 import lottie from 'lottie-web';
 import adminAnimation from '@/assets/background.json';
 import userAnimation from '@/assets/mainbg.json';
