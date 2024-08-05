@@ -37,6 +37,7 @@ const createMyApp = () => {
 
   // Use Vue Router
   app.use(router);
+  app.provide('router', router)
 
   // Register FontAwesome component
   app.component('font-awesome-icon', FontAwesomeIcon);

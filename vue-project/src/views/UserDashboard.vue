@@ -804,7 +804,9 @@ nav ul li a i {
 }
 
 .user-profile span {
-  font-weight: 500;
+  font-weight: bolder;
+  font-size: 18px;
+  
 }
 
 .icon-notification {

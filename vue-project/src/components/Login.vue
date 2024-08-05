@@ -107,14 +107,17 @@
 
 
 <script>
-import { createMachine, assign } from 'xstate';
-import {machine} from '@/assets/machines/authMachine'
+// import { useMachine } from '@xstate/vue';
+// import { authMachine } from '@/assets/machines/authMachine';
 import lottie from 'lottie-web';
 import adminAnimation from '@/assets/background.json';
 import userAnimation from '@/assets/mainbg.json';
 import signupAnimation from '@/assets/mainbg.json';
 import ErrorPopup from './Errorpopup.vue';
 import logo from '@/assets/logo.png';
+import { ref, inject, onMounted  } from 'vue'
+// import firebase from 'firebase/compat/app';
+// import 'firebase/compat/auth';
 import { auth, db } from '@/firebaseConfig';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -124,37 +127,25 @@ export default {
   components: {
     ErrorPopup,
   },
-  data() {
-    return {
-      username:'',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      currentAnimation: null,
-      showError: false,
-      errorMessage: '',
-      logo,
-      currentView: 'user',
-      capsLockOn: false,
-      validAdminEmails: ['21020@admin.com'], // Add valid admin emails here
-    };
-  },
-  methods: {
-    changeView(to) {
-      this.currentView = to;
-      if (to === 'admin') {
-        this.setBackground(adminAnimation);
-      } else if (to === 'user') {
-        this.setBackground(userAnimation);
-      } else if (to === 'signup') {
-        this.setBackground(signupAnimation);
+  setup() {
+    const router = inject('router');
+
+    const username = ref('');
+    const email = ref('');
+    const password = ref('');
+    const confirmPassword = ref('');
+    const currentAnimation = ref(null);
+    const showError = ref(false);
+    const errorMessage = ref('');
+    const currentView = ref('user');
+    const capsLockOn = ref(false);
+    const validAdminEmails = ['21020@admin.com'];
+
+    const setBackground = (animationData) => {
+      if (currentAnimation.value) {
+        currentAnimation.value.destroy();
       }
-    },
-    setBackground(animationData) {
-      if (this.currentAnimation) {
-        this.currentAnimation.destroy();
-      }
-      this.currentAnimation = lottie.loadAnimation({
+      currentAnimation.value = lottie.loadAnimation({
         container: document.getElementById('background'),
         animationData: animationData,
         renderer: 'svg',
@@ -164,26 +155,34 @@ export default {
           preserveAspectRatio: 'xMidYMid slice',
         },
       });
-    },
-    async login(role) {
-      try {
-        // Sign in with Firebase Auth
-        const userCredential = await signInWithEmailAndPassword(auth, this.email, this.password);
-        const user = userCredential.user;
+    };
 
-        // Check user role in Firestore
+    const changeView = (to) => {
+      currentView.value = to;
+      if (to === 'admin') {
+        setBackground(adminAnimation);
+      } else if (to === 'user') {
+        setBackground(userAnimation);
+      } else if (to === 'signup') {
+        setBackground(signupAnimation);
+      }
+    };
+
+    const login = async (role) => {
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email.value, password.value);
+        const user = userCredential.user;
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         const userData = userDoc.data();
 
         if (userData) {
           if (role === 'admin') {
-            // Check if email is in the list of valid admin emails
-            if (!this.validAdminEmails.includes(this.email)) {
+            if (!validAdminEmails.includes(email.value)) {
               throw new Error('Invalid admin email');
             }
-            this.$router.push({ name: 'AdminDashboard' });
+            router.push({ name: 'AdminDashboard' });
           } else if (userData.role === 'user') {
-            this.$router.push({ name: 'UserDashboard' });
+            router.push({ name: 'UserDashboard' });
           } else {
             throw new Error('Invalid role for this user');
           }
@@ -191,59 +190,71 @@ export default {
           throw new Error('User data not found');
         }
       } catch (error) {
-        this.showError = true;
-        this.errorMessage = error.message;
+        showError.value = true;
+        errorMessage.value = error.message || 'An error occurred during login';
         setTimeout(() => {
-          this.showError = false;
+          showError.value = false;
         }, 3000);
       }
-    },
-    async signup() {
-      if (this.password !== this.confirmPassword) {
-        this.showError = true;
-        this.errorMessage = 'Passwords do not match';
+    };
+
+    const signup = async () => {
+      if (password.value !== confirmPassword.value) {
+        showError.value = true;
+        errorMessage.value = 'Passwords do not match';
         setTimeout(() => {
-          this.showError = false;
+          showError.value = false;
         }, 3000);
         return;
       }
 
       try {
-        // Create user with Firebase Auth
-        console.log('Starting signup process');
-
-        const userCredential = await createUserWithEmailAndPassword(auth, this.email, this.password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email.value, password.value);
         const user = userCredential.user;
 
-        console.log('User created:', user.uid);
-
-        
-
-        // Store additional user info in Firestore
         await setDoc(doc(db, 'users', user.uid), {
-          username: this.username,
-          email: this.email,
-          role: 'user', // Default role
+          username: username.value,
+          email: email.value,
+          role: 'user',
         });
 
         alert('Sign-up successful!');
-        this.changeView('user');
+        router.push({ name: 'UserDashboard' });
       } catch (error) {
-        this.showError = true;
-        this.errorMessage = error.message;
+        showError.value = true;
+        errorMessage.value = error.message || 'An error occurred during sign-up';
         setTimeout(() => {
-          this.showError = false;
+          showError.value = false;
         }, 3000);
       }
-    },
-    checkCapsLock(event) {
+    };
+
+    const checkCapsLock = (event) => {
       if (event.getModifierState) {
-        this.capsLockOn = event.getModifierState('CapsLock');
+        capsLockOn.value = event.getModifierState('CapsLock');
       }
-    },
-  },
-  mounted() {
-    this.setBackground(userAnimation); // Default background
+    };
+
+    onMounted(() => {
+      setBackground(userAnimation); // Default background
+    });
+
+    return {
+      username,
+      email,
+      password,
+      confirmPassword,
+      showError,
+      errorMessage,
+      logo,
+      currentView,
+      capsLockOn,
+      validAdminEmails,
+      changeView,
+      login,
+      signup,
+      checkCapsLock,
+    };
   },
 };
 </script>
