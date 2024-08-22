@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container" v-if="user">
+  <div class="app-container" v-if="('userDashboard')">
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="logo">
@@ -32,7 +32,12 @@
 
         <!-- Search Bar -->
         <div class="search-bar">
-          <input type="text" v-model="searchQuery" @input="search" placeholder="Find the book you like..." />
+          <input
+            type="text"
+            v-model="searchQuery"
+            @input="search"
+            placeholder="Find the book you like..."
+          />
           <button @click="search">Search</button>
         </div>
 
@@ -49,8 +54,12 @@
         <section class="book-categories">
           <h2>Book Categories</h2>
           <div class="category-list">
-            <div v-for="category in bookCategories" :key="category.name" class="category"
-              @click="sortBooksByCategory(category.name)">
+            <div
+              v-for="category in bookCategories"
+              :key="category.name"
+              class="category"
+              @click="sortBooksByCategory(category.name)"
+            >
               <font-awesome-icon :icon="category.icon" />
               <h3>{{ category.name }}</h3>
             </div>
@@ -68,8 +77,16 @@
               <h3>{{ book.title }}</h3>
               <p>{{ book.author }}</p>
               <div class="book-actions">
-                <button v-if="book.available" @click="borrowBook(book)" class="borrow-btn">Borrow</button>
-                <button v-else class="borrow-btn" disabled>Not Available</button>
+                <button
+                  v-if="book.available"
+                  @click="borrowBook(book)"
+                  class="borrow-btn"
+                >
+                  Borrow
+                </button>
+                <button class="borrow-btn" disabled v-else>
+                  Not Available
+                </button>
                 <button @click="toggleFavorite(book)" class="favorite-btn">
                   {{ book.isFavorite ? 'Remove from Favorites' : 'Add to Favorites' }}
                 </button>
@@ -119,7 +136,13 @@
               <h3>{{ book.title }}</h3>
               <p>{{ book.author }}</p>
               <div class="book-actions">
-                <button v-if="book.available" @click="borrowBook(book)" class="borrow-btn">Borrow</button>
+                <button
+                  v-if="book.available"
+                  @click="borrowBook(book)"
+                  class="borrow-btn"
+                >
+                  Borrow
+                </button>
                 <p v-else>Not Available</p>
               </div>
             </div>
@@ -130,31 +153,82 @@
   </div>
 </template>
 
-
 <script>
-import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, doc, getDoc, collection, query, where, getDocs, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
-import { getStorage, ref, getDownloadURL } from 'firebase/storage';
-import { ref as vueRef, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from 'firebase/auth';
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  runTransaction
+} from 'firebase/firestore';
+import {
+  getStorage,
+  ref,
+  getDownloadURL
+} from 'firebase/storage';
+import {
+  ref as vueRef,
+  onMounted,
+  computed
+} from 'vue';
+import {
+  useRouter
+} from 'vue-router';
 import logo from '@/assets/logo.png';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { library } from '@fortawesome/fontawesome-svg-core';
-import { faSearch, faBook, faBell, faCog, faSignOutAlt, faChartLine, faPaintBrush, faBriefcase, faDumbbell, faNewspaper, faRocket, faHourglass, faUser, faSearch as faSearchIcon } from '@fortawesome/free-solid-svg-icons';
+import {
+  FontAwesomeIcon
+} from '@fortawesome/vue-fontawesome';
+import {
+  library
+} from '@fortawesome/fontawesome-svg-core';
+import {
+  faSearch,
+  faBook,
+  faBell,
+  faCog,
+  faSignOutAlt,
+  faChartLine,
+  faPaintBrush,
+  faBriefcase,
+  faDumbbell,
+  faNewspaper,
+  faRocket,
+  faHourglass,
+  faUser,
+  faSearch as faSearchIcon
+} from '@fortawesome/free-solid-svg-icons';
 
-library.add(faSearch, faBook, faBell, faCog, faSignOutAlt, faChartLine, faPaintBrush, faBriefcase, faDumbbell, faNewspaper, faRocket, faHourglass, faUser, faSearchIcon);
+library.add(
+  faSearch,
+  faBook,
+  faBell,
+  faCog,
+  faSignOutAlt,
+  faChartLine,
+  faPaintBrush,
+  faBriefcase,
+  faDumbbell,
+  faNewspaper,
+  faRocket,
+  faHourglass,
+  faUser,
+  faSearchIcon
+);
 
 export default {
-  
   name: 'UserDashboard',
-  
   components: {
     FontAwesomeIcon,
-    books: {
-      type: Array,
-      required: true
-    }
-    
   },
   setup() {
     const auth = getAuth();
@@ -170,24 +244,63 @@ export default {
     const searchQuery = vueRef('');
     const selectedCategory = vueRef('');
 
-
-    const menuItems = [
-      { label: 'Discover', icon: ['fas', 'search'], route: 'Discover' },
-      { label: 'My Library', icon: ['fas', 'book'], route: 'Library' },
-      { label: 'Favorite', icon: ['fas', 'heart'], route: 'Favorite' },
+    const menuItems = [{
+        label: 'Discover',
+        icon: ['fas', 'search'],
+        route: 'Discover'
+      },
+      {
+        label: 'My Library',
+        icon: ['fas', 'book'],
+        route: 'Library'
+      },
+      {
+        label: 'Favorite',
+        icon: ['fas', 'heart'],
+        route: 'Favorite'
+      },
     ];
 
-    const bookCategories = [
-      { name: 'Money/Investing', icon: 'chart-line' },
-      { name: 'Design', icon: 'paint-brush' },
-      { name: 'Business', icon: 'briefcase' },
-      { name: 'Self Improvement', icon: 'dumbbell' },
-      { name: 'Fiction', icon: 'book' },
-      { name: 'Non-Fiction', icon: 'newspaper' },
-      { name: 'Sci-fi', icon: 'rocket' },
-      { name: 'History', icon: 'hourglass' },
-      { name: 'Biography', icon: 'user' },
-      { name: 'Mystery', icon: 'search' }
+    const bookCategories = [{
+        name: 'Money/Investing',
+        icon: 'chart-line'
+      },
+      {
+        name: 'Design',
+        icon: 'paint-brush'
+      },
+      {
+        name: 'Business',
+        icon: 'briefcase'
+      },
+      {
+        name: 'Self Improvement',
+        icon: 'dumbbell'
+      },
+      {
+        name: 'Fiction',
+        icon: 'book'
+      },
+      {
+        name: 'Non-Fiction',
+        icon: 'newspaper'
+      },
+      {
+        name: 'Sci-fi',
+        icon: 'rocket'
+      },
+      {
+        name: 'History',
+        icon: 'hourglass'
+      },
+      {
+        name: 'Biography',
+        icon: 'user'
+      },
+      {
+        name: 'Mystery',
+        icon: 'search'
+      }
     ];
 
     onMounted(() => {
@@ -196,458 +309,403 @@ export default {
           user.value = userData;
           fetchUserData();
           fetchBooks();
-          console.log('Fetching books...');
-
         } else {
-          router.push({ name: 'Login' });
+          router.push({
+            name: 'Login'
+          });
         }
       });
     });
 
     const fetchUserData = async () => {
-      if (user.value) {
-        const userDocRef = doc(db, 'users', user.value.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          user.value = { ...user.value, ...userData };
-          username.value = userData.username || '';
-          console.log('Username fetched:', username.value); // Debug log
-        }
-      }
-    };
-
-  const fetchBooks = async () => {
-  console.log("Starting fetchBooks function");
-  const booksQuery = query(collection(db, 'books'));
-  console.log("Query created:", booksQuery);
-  const querySnapshot = await getDocs(booksQuery);
-  console.log("QuerySnapshot received:", querySnapshot);
-
-  recommendedBooks.value = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
-    console.log("Processing document:", docSnapshot.id);
-    const bookData = docSnapshot.data();
-    console.log("Book data:", bookData);
-
-    let coverUrl = '';
-    let pdfUrl = '';
-    
-    if (bookData.coverPath) {
-      try {
-        const coverRef = ref(storage, bookData.coverPath);
-        coverUrl = await getDownloadURL(coverRef);
-      } catch (error) {
-        console.error('Error fetching cover image:', error);
-      }
-    }
-    
-    if (bookData.pdfPath) {
-      try {
-        const pdfRef = ref(storage, bookData.pdfPath);
-        pdfUrl = await getDownloadURL(pdfRef);
-      } catch (error) {
-        console.error('Error fetching PDF:', error);
-        pdfUrl = 'PDF not available';
-      }
-    }
-
-    return {
-      id: docSnapshot.id,
-      ...bookData,
-      coverUrl,
-      pdfUrl
-    };
-  }));
-
-
-
-
-
-      //fetch borrowed books
-    const borrowedQuery = query(collection(db, 'borrowedBooks'), where('userId', '==', user.value.uid));
-    const borrowedSnapshot = await getDocs(borrowedQuery);
-    borrowedBooks.value = await Promise.all(borrowedSnapshot.docs.map(async (borrowedDoc) => {
-      const bookData = borrowedDoc.data();
-      const bookRef = doc(db, 'books', bookData.bookId);
-      const bookSnapshot = await getDoc(bookRef);
-      const bookDetails = bookSnapshot.exists() ? bookSnapshot.data() : {};
-      
-      let coverUrl = '';
-      let pdfUrl = '';
-      
-      if (bookDetails.coverPath) {
-        try {
-          const coverRef = ref(storage, bookDetails.coverPath);
-          coverUrl = await getDownloadURL(coverRef);
-        } catch (error) {
-          console.error('Error fetching cover image for borrowed book:', error);
-        }
-      }
-      
-      if (bookDetails.pdfPath) {
-        try {
-          const pdfRef = ref(storage, bookDetails.pdfPath);
-          pdfUrl = await getDownloadURL(pdfRef);
-        } catch (error) {
-          console.error('Error fetching PDF for borrowed book:', error);
-          pdfUrl = 'PDF not available';
-        }
-      }
-      
-      return {
-        id: borrowedDoc.id,
-        ...bookData,
-        ...bookDetails,
-        coverUrl,
-        pdfUrl
-      };
-    }));
-      if (!favoriteBooks.value) favoriteBooks.value = [];
-
-          // Inside fetchBooks function
-    try {
-      const userId = user.value.uid
-      const userRef = doc(db, 'users', userId)
-      const userDoc = await getDoc(userRef)
+      const userRef = doc(db, 'users', user.value.uid);
+      const userDoc = await getDoc(userRef);
 
       if (userDoc.exists()) {
-        const userData = userDoc.data()
-        const favoriteBookIds = userData.favoriteBooks || []
-        console.log("FAVVEE: ", favoriteBookIds)
-        favoriteBooks.value = await Promise.all(
-          favoriteBookIds.map(async (bookId) => {
-            const bookRef = await getDoc(doc(db, 'books', bookId))
-            const bookDetails = bookRef.data()
-            let coverUrl = ''
-            let pdfUrl = ''
-
-            if (bookDetails.coverPath) {
-              try {
-                const coverRef = ref(storage, bookDetails.coverPath)
-                coverUrl = await getDownloadURL(coverRef)
-              } catch (error) {
-                console.error('Error fetching cover image for favorite book:', error)
-              }
-            }
-
-            if (bookDetails.pdfPath) {
-              try {
-                const pdfRef = ref(storage, bookDetails.pdfPath)
-                pdfUrl = await getDownloadURL(pdfRef)
-              } catch (error) {
-                console.error('Error fetching PDF for favorite book:', error)
-                pdfUrl = 'PDF not available'
-              }
-            }
-            console.log("FAVE--",{
-              id: bookRef.id,
-              ...bookDetails,
-              coverUrl,
-              pdfUrl,
-              isFavorite: true
-            })
-            return {
-              id: bookRef.id,
-              ...bookDetails,
-              coverUrl,
-              pdfUrl,
-              isFavorite: true
-            }
-          })
-        )
-        console.log("FVBOOKS-- ", favoriteBooks)
-      } else {
-        console.error('User document does not exist')
+        username.value = userDoc.data().username || user.value.email;
       }
-    } catch (error) {
-      console.error('Error fetching favorite books:', error)
-    }
-        };
+    };
+
+    const fetchBooks = async () => {
+      try {
+        const bookCollection = collection(db, 'books');
+        const bookQuerySnapshot = await getDocs(bookCollection);
+
+        recommendedBooks.value = await Promise.all(
+          bookQuerySnapshot.docs.map(async (docSnapshot) => {
+            const bookData = docSnapshot.data();
+            let coverUrl = '';
+            let pdfUrl = '';
+
+            if (bookData.coverPath) {
+              try {
+                const coverRef = ref(storage, bookData.coverPath);
+                coverUrl = await getDownloadURL(coverRef);
+              } catch (error) {
+                console.error('Error fetching cover image:', error);
+              }
+            }
+
+            if (bookData.pdfPath) {
+              try {
+                const pdfRef = ref(storage, bookData.pdfPath);
+                pdfUrl = await getDownloadURL(pdfRef);
+              } catch (error) {
+                console.error('Error fetching PDF:', error);
+              }
+            }
+
+            return {
+              id: docSnapshot.id,
+              ...bookData,
+              coverUrl,
+              pdfUrl,
+              isFavorite: false,
+            };
+          })
+        );
+      } catch (error) {
+        console.error('Error fetching books:', error);
+      }
+    };
 
     const filteredBooks = computed(() => {
-      if (!selectedCategory.value && !searchQuery.value.trim()) {
-        return recommendedBooks.value;
-      }
-      let filtered = recommendedBooks.value;
-      if (selectedCategory.value) {
-        filtered = filtered.filter(book => book.genre === selectedCategory.value);
-      }
-      if (searchQuery.value.trim()) {
-        const query = searchQuery.value.toLowerCase().trim();
-        filtered = filtered.filter(book => 
-          book.title.toLowerCase().includes(query) ||
-          book.author.toLowerCase().includes(query) ||
-          book.genre.toLowerCase().includes(query)
+      return recommendedBooks.value.filter((book) => {
+        return (
+          (!selectedCategory.value ||
+            book.category === selectedCategory.value) &&
+          (searchQuery.value === '' ||
+            book.title.toLowerCase().includes(searchQuery.value.toLowerCase()))
         );
-      }
-      return filtered;
+      });
     });
+
+    const search = () => {
+      filteredBooks.value;
+    };
 
     const logout = async () => {
       try {
         await signOut(auth);
-        router.push({ name: 'Login' });
+        router.push({
+          name: 'Login'
+        });
       } catch (error) {
-        console.error('Error signing out:', error);
+        console.error('Error logging out:', error);
       }
     };
 
-    const search = () => {
-      if (!searchQuery.value.trim()) {
-        // If the search query is empty, show all books
-        filteredBooks.value = recommendedBooks.value;
-      } else {
-        const query = searchQuery.value.toLowerCase().trim();
-        filteredBooks.value = recommendedBooks.value.filter(book => 
-          book.title.toLowerCase().includes(query) ||
-          book.author.toLowerCase().includes(query) ||
-          book.genre.toLowerCase().includes(query)
-        );
-      }
+    const borrowBook = async (book) => {
+      try {
+        send('BORROW_BOOK');
+        const bookRef = doc(db, 'books', book.id);
+        const userRef = doc(db, 'users', user.value.uid);
 
-    console.log('Searching for:', searchQuery.value);
+        await runTransaction(db, async (transaction) => {
+          const bookDoc = await transaction.get(bookRef);
+          const userDoc = await transaction.get(userRef);
+
+          if (!bookDoc.exists) {
+            throw 'Book does not exist!';
+          }
+
+          if (!userDoc.exists) {
+            throw 'User does not exist!';
+          }
+
+          const borrowedBooksCount = userDoc.data().borrowedBooksCount || 0;
+
+          if (borrowedBooksCount >= 5) {
+            throw 'You cannot borrow more than 5 books at a time.';
+          }
+
+          const bookData = bookDoc.data();
+
+          if (!bookData.available) {
+            throw 'This book is currently not available.';
+          }
+
+          transaction.update(bookRef, {
+            available: false
+          });
+
+          const borrowedBookRef = doc(collection(db, 'borrowedBooks'));
+          transaction.set(borrowedBookRef, {
+            userId: user.value.uid,
+            bookId: book.id,
+            borrowDate: new Date().toISOString(),
+            returnDate: new Date(new Date().setDate(new Date().getDate() + 14)).toISOString(),
+            title: book.title,
+            author: book.author,
+            coverPath: book.coverPath,
+            pdfPath: book.pdfPath,
+          });
+          transaction.update(userRef, {
+            borrowedBooksCount: borrowedBooksCount + 1
+          });
+
+          // Add a borrow log
+          const borrowLogRef = doc(collection(db, 'borrowLogs'));
+          transaction.set(borrowLogRef, {
+            userId: user.value.uid,
+            bookId: book.id,
+            action: 'borrowed',
+            timestamp: new Date().toISOString(),
+          });
+        });
+
+        console.log('Book borrowed successfully');
+
+        // Update local state
+        recommendedBooks.value = recommendedBooks.value.map((b) =>
+          b.id === book.id ? {
+            ...b,
+            available: false
+          } : b
+        );
+        borrowedBooks.value.push({
+          id: book.id,
+          ...book,
+          borrowDate: new Date().toISOString(),
+          returnDate: new Date(new Date().setDate(new Date().getDate() + 14)).toISOString(),
+        });
+
+        send({
+          type: 'SUCCESS'
+        });
+      } catch (error) {
+        console.error('Error borrowing book:', error);
+        send({
+          type: 'FAILURE'
+        });
+
+        // You might want to show an error message to the user here
+        alert(`Error borrowing book: ${error.message}`);
+      }
     };
 
     const renewBook = async (book) => {
       try {
+        send('RENEW_BOOK');
         const borrowedBookRef = doc(db, 'borrowedBooks', book.id);
-        const newReturnDate = new Date(book.returnDate);
-        newReturnDate.setDate(newReturnDate.getDate() + 14); // Extend by 14 days
+        const bookRef = doc(db, 'books', book.id);
+        const newReturnDate = new Date(
+          new Date(book.returnDate).setDate(new Date(book.returnDate).getDate() + 14)
+        ).toISOString();
 
         await updateDoc(borrowedBookRef, {
-          returnDate: newReturnDate.toISOString()
+          returnDate: newReturnDate
+        });
+
+        await updateDoc(bookRef, {
+          available: false
         });
 
         // Update local state
-        borrowedBooks.value = borrowedBooks.value.map(b => 
-          b.id === book.id ? { ...b, returnDate: newReturnDate.toISOString() } : b
+        borrowedBooks.value = borrowedBooks.value.map((b) =>
+          b.id === book.id ? {
+            ...b,
+            returnDate: newReturnDate
+          } : b
         );
 
-        console.log('Book renewed successfully');
+        send({
+          type: 'SUCCESS'
+        });
       } catch (error) {
         console.error('Error renewing book:', error);
+        send({
+          type: 'FAILURE'
+        });
+
+        // You might want to show an error message to the user here
+        alert(`Error renewing book: ${error.message}`);
       }
     };
 
     const returnBook = async (book) => {
       try {
-        console.log('Starting return process for book:', book);
+        send('RETURN_BOOK');
+        const bookRef = doc(db, 'books', book.id);
+        const borrowedBookRef = doc(db, 'borrowedBooks', book.id);
+        const userRef = doc(db, 'users', user.value.uid);
+
         await runTransaction(db, async (transaction) => {
-          const bookRef = doc(db, 'books', book.bookId);
-          const userRef = doc(db, 'users', user.value.uid);
-          const borrowedBookRef = doc(db, 'borrowedBooks', book.id);
-
-          console.log('Fetching documents...');
-          const bookDoc = await transaction.get(bookRef);
           const userDoc = await transaction.get(userRef);
-          const borrowedBookDoc = await transaction.get(borrowedBookRef);
 
-          if (!bookDoc.exists()) {
-            throw new Error(`Book document not found: ${book.bookId}`);
-          }
-          if (!userDoc.exists()) {
-            throw new Error(`User document not found: ${user.value.uid}`);
-          }
-          if (!borrowedBookDoc.exists()) {
-            throw new Error(`Borrowed book document not found: ${book.id}`);
+          if (!userDoc.exists) {
+            throw 'User does not exist!';
           }
 
-          console.log('Updating documents...');
-          // Update book availability
-          transaction.update(bookRef, { available: true });
+          const borrowedBooksCount = userDoc.data().borrowedBooksCount || 0;
 
-          // Remove from borrowedBooks
+          transaction.update(bookRef, {
+            available: true
+          });
+
           transaction.delete(borrowedBookRef);
+          transaction.update(userRef, {
+            borrowedBooksCount: borrowedBooksCount - 1
+          });
 
-      // Update user's borrowed books count
-      const borrowedBooksCount = Math.max((userDoc.data().borrowedBooksCount || 1) - 1, 0);
-      transaction.update(userRef, { borrowedBooksCount: borrowedBooksCount });
-
-      // Add a return log
-      const returnLogRef = doc(collection(db, 'borrowLogs'));
-      transaction.set(returnLogRef, {
-        userId: user.value.uid,
-        bookId: book.bookId,
-        action: 'returned',
-        timestamp: new Date().toISOString()
-      });
-    });
-
-    console.log('Transaction completed successfully');
-
-    // Update local state
-    borrowedBooks.value = borrowedBooks.value.filter(b => b.id !== book.id);
-    recommendedBooks.value = recommendedBooks.value.map(b => 
-      b.id === book.bookId ? { ...b, available: true } : b
-    );
-
-    console.log('Local state updated');
-    console.log('Book returned successfully');
-  } catch (error) {
-    console.error('Error returning book:', error);
-    console.error('Error details:', error.stack);
-    // You might want to show an error message to the user here
-    alert(`Error returning book: ${error.message}`);
-  }
-};
-
-const borrowBook = async (book) => {
-  try {
-    await runTransaction(db, async (transaction) => {
-      // Perform all reads first
-      const bookRef = doc(db, 'books', book.id);
-      const userRef = doc(db, 'users', user.value.uid);
-      const borrowedBookRef = doc(collection(db, 'borrowedBooks'));
-
-      const bookDoc = await transaction.get(bookRef);
-      const userDoc = await transaction.get(userRef);
-
-      // Check if the book is available
-      if (!bookDoc.exists() || !bookDoc.data().available) {
-        throw new Error('Book is not available');
-      }
-
-      const borrowDate = new Date();
-          const returnDate = new Date(borrowDate);
-          returnDate.setDate(returnDate.getDate() + 14);
-
-      const borrowedBooksCount = (userDoc.data().borrowedBooksCount || 0) + 1;
-
-     // Perform all writes
-          transaction.update(bookRef, { available: false });
-          transaction.set(borrowedBookRef, {
+          // Add a return log
+          const returnLogRef = doc(collection(db, 'borrowLogs'));
+          transaction.set(returnLogRef, {
             userId: user.value.uid,
             bookId: book.id,
-            borrowDate: borrowDate.toISOString(),
-            returnDate: returnDate.toISOString(),
-            title: book.title,
-            author: book.author,
-            genre: book.genre,
-            coverUrl: book.coverUrl,
-            pdfUrl: book.pdfUrl
+            action: 'returned',
+            timestamp: new Date().toISOString(),
           });
-          transaction.update(userRef, { borrowedBooksCount: borrowedBooksCount });
+        });
 
-      
+        console.log('Book returned successfully');
 
-      // Add a borrow log
-      // const borrowLogRef = doc(collection(db, 'borrowLogs'));
-      // transaction.set(borrowLogRef, {
-      //   userName: user.value.uid,
-      //   bookId: book.id,
-      //   action: 'borrowed',
-      //   borrowDate: borrowDate,
-      //   returnDate: returnDate
-      // });
-    });
- // Update the UI
-        const borrowedBook = {
-          ...book,
-          id: doc(collection(db, 'borrowedBooks')).id,
-          borrowDate: new Date().toISOString(),
-          returnDate: new Date(new Date().setDate(new Date().getDate() + 14)).toISOString()
-        };
-        borrowedBooks.value.push(borrowedBook);
-        recommendedBooks.value = recommendedBooks.value.map(b => 
-          b.id === book.id ? { ...b, available: false } : b
+        // Update local state
+        borrowedBooks.value = borrowedBooks.value.filter((b) => b.id !== book.id);
+        recommendedBooks.value = recommendedBooks.value.map((b) =>
+          b.id === book.id ? {
+            ...b,
+            available: true
+          } : b
         );
 
-        console.log('Book borrowed successfully');
+        send({
+          type: 'SUCCESS'
+        });
       } catch (error) {
-        console.error('Error borrowing book:', error);
+        console.error('Error returning book:', error);
+        send({
+          type: 'FAILURE'
+        });
+
+        // You might want to show an error message to the user here
+        alert(`Error returning book: ${error.message}`);
+      }
+    };
+
+    const toggleFavorite = async (book) => {
+      try {
+        send('TOGGLE_FAVORITE');
+        const userRef = doc(db, 'users', user.value.uid);
+        const userDoc = await getDoc(userRef);
+
+        if (!userDoc.exists()) {
+          throw new Error('User document does not exist');
+        }
+
+        const favoriteBooks = userDoc.data().favoriteBooks || [];
+        let updatedFavorites;
+
+        if (book.isFavorite) {
+          // Remove from favorites
+          updatedFavorites = favoriteBooks.filter((id) => id !== book.id);
+        } else {
+          // Add to favorites
+          updatedFavorites = [...favoriteBooks, book.id];
+        }
+
+        await updateDoc(userRef, {
+          favoriteBooks: updatedFavorites
+        });
+
+        // Update local state
+        favoriteBooks.value = await Promise.all(
+          updatedFavorites.map(async (bookId) => {
+            const bookRef = await getDoc(doc(db, 'books', bookId));
+            const bookDetails = bookRef.data();
+
+            let coverUrl = '';
+            let pdfUrl = '';
+
+            if (bookDetails.coverPath) {
+              try {
+                const coverRef = ref(storage, bookDetails.coverPath);
+                coverUrl = await getDownloadURL(coverRef);
+              } catch (error) {
+                console.error('Error fetching cover image for favorite book:', error);
+              }
+            }
+
+            if (bookDetails.pdfPath) {
+              try {
+                const pdfRef = ref(storage, bookDetails.pdfPath);
+                pdfUrl = await getDownloadURL(pdfRef);
+              } catch (error) {
+                console.error('Error fetching PDF for favorite book:', error);
+                pdfUrl = 'PDF not available';
+              }
+            }
+
+            return {
+              id: bookRef.id,
+              ...bookDetails,
+              coverUrl,
+              pdfUrl,
+              isFavorite: true,
+            };
+          })
+        );
+
+        send({
+          type: 'SUCCESS'
+        });
+      } catch (error) {
+        console.error('Error toggling favorite book:', error);
+        send({
+          type: 'FAILURE'
+        });
+
+        // Show an error message to the user here
+        alert(`Error toggling favorite book: ${error.message}`);
       }
     };
 
     const openPdf = (book) => {
-    console.log('Book object:', book);
-    if (book.pdfUrl && book.pdfUrl !== 'PDF not available') {
-      console.log('Opening PDF URL:', book.pdfUrl);
-      window.open(book.pdfUrl, '_blank');
-    } else {
-      console.error('PDF URL not available for this book');
-      // Show an error message to the user
-      alert('Sorry, the PDF for this book is not available.');
-    }
-  };
-
-    const toggleFavorite = async (book) => {
-      try {
-        const userId = user.value.uid;
-        const userRef = doc(db, 'users', userId);
-        const userDoc = await getDoc(userRef);
-
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          let favoriteBooks = userData.favoriteBooks || [];
-
-          if (favoriteBooks.includes(book.id)) {
-            // If the book is already a favorite, remove it
-            favoriteBooks = favoriteBooks.filter(b => b !== book.id);
-            console.log('Book removed from favorites');
-          } else {
-            // If the book is not a favorite, add it
-            favoriteBooks.push(book.id);
-            console.log('Book added to favorites');
-          }
-
-          // Update the user's favoriteBooks array in the database
-          await updateDoc(userRef, { favoriteBooks });
-
-          // Update the local state
-          favoriteBooks.value = favoriteBooks.map(b => b === book.id ? { ...b, isFavorite: !b.isFavorite } : b);
-
-          // Update the local recommendedBooks state
-          recommendedBooks.value = recommendedBooks.value.map(b =>
-            b.id === book.id ? { ...b, isFavorite: !b.isFavorite } : b
-          );
-
-        } else {
-          console.error('User document does not exist');
-        }
-      } catch (error) {
-        console.error('Error toggling favorite:', error);
+      if (book.pdfUrl) {
+        window.open(book.pdfUrl, '_blank');
+      } else {
+        alert('PDF is not available for this book.');
       }
     };
-
-
-
 
     const sortBooksByCategory = (category) => {
       selectedCategory.value = category;
     };
 
     const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleDateString();
+      const options = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      };
+      return new Date(dateString).toLocaleDateString(undefined, options);
     };
 
     return {
-      user,
       username,
       menuItems,
-      searchQuery,
       bookCategories,
-      recommendedBooks,
-      borrowedBooks,
-      favoriteBooks, 
       filteredBooks,
+      borrowedBooks,
+      favoriteBooks,
+      searchQuery,
       selectedCategory,
-      logout,
-      logo,
       search,
+      logout,
+      borrowBook,
       renewBook,
       returnBook,
-      borrowBook,
       toggleFavorite,
+      openPdf,
       sortBooksByCategory,
       formatDate,
-      openPdf,
-      searchQuery,
-      search,
-      
+      logo,
     };
-  }
+  },
 };
 </script>
+
+
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
@@ -655,7 +713,7 @@ const borrowBook = async (book) => {
 .app-container {
   display: flex;
   min-height: 160vh;
-  min-width: 203vh;
+  min-width: 250vh;
   font-family: 'Poppins', sans-serif;
   background-color: whitesmoke;
   margin-left: 4vh;

@@ -103,19 +103,14 @@
   </div>
 </template>
 
-
-
-
 <script>
-// import { useMachine } from '@xstate/vue';
-// import { authMachine } from '@/assets/machines/authMachine';
 import lottie from 'lottie-web';
 import adminAnimation from '@/assets/background.json';
 import userAnimation from '@/assets/mainbg.json';
 import signupAnimation from '@/assets/mainbg.json';
 import ErrorPopup from './Errorpopup.vue';
 import logo from '@/assets/logo.png';
-import { ref, inject, onMounted  } from 'vue'
+import { ref, inject, onMounted } from 'vue';
 // import firebase from 'firebase/compat/app';
 // import 'firebase/compat/auth';
 import { auth, db } from '@/firebaseConfig';
@@ -155,17 +150,6 @@ export default {
           preserveAspectRatio: 'xMidYMid slice',
         },
       });
-    };
-
-    const changeView = (to) => {
-      currentView.value = to;
-      if (to === 'admin') {
-        setBackground(adminAnimation);
-      } else if (to === 'user') {
-        setBackground(userAnimation);
-      } else if (to === 'signup') {
-        setBackground(signupAnimation);
-      }
     };
 
     const login = async (role) => {
@@ -229,6 +213,17 @@ export default {
       }
     };
 
+    const changeView = (to) => {
+      currentView.value = to;
+      if (to === 'admin') {
+        setBackground(adminAnimation);
+      } else if (to === 'user') {
+        setBackground(userAnimation);
+      } else if (to === 'signup') {
+        setBackground(signupAnimation);
+      }
+    };
+
     const checkCapsLock = (event) => {
       if (event.getModifierState) {
         capsLockOn.value = event.getModifierState('CapsLock');
@@ -258,6 +253,7 @@ export default {
   },
 };
 </script>
+
 
 
 
